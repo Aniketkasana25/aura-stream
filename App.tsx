@@ -12,6 +12,21 @@ import { FEATURED_CONTENT, CONTENT_CATEGORIES, ALL_CONTENT_ITEMS } from './const
 import { ContentItem } from './types';
 import { UserProfile, USER_PROFILES } from './profiles';
 
+const DB_KEY = 'aurastream_database';
+
+interface ProfileData {
+  watchlist: number[];
+  ratings: Record<number, number>;
+}
+
+interface AppDatabase {
+  auth: {
+    isAuthenticated: boolean;
+    currentProfileId: number | null;
+  };
+  profiles: Record<number, ProfileData>;
+}
+
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
@@ -29,40 +44,82 @@ const App: React.FC = () => {
   const [profiles] = useState<UserProfile[]>(USER_PROFILES);
   const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
   
-  const [contentData, setContentData] = useState(() => {
-    return new Map(ALL_CONTENT_ITEMS.map(item => [item.id, item]));
-  });
+  const [contentData, setContentData] = useState<Map<number, ContentItem>>(new Map());
   
   const [featuredContentId, setFeaturedContentId] = useState(FEATURED_CONTENT.id);
   const [contentCategories, setContentCategories] = useState(CONTENT_CATEGORIES);
 
-  // Simulate initial loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000); // A bit of a delay for a smoother perceived loading experience
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Load watchlist, ratings, and watch time from localStorage on initial render
+  // Load state from local "database" on initial render
   useEffect(() => {
     try {
-      const storedWatchlist = localStorage.getItem('aurastream_watchlist');
-      if (storedWatchlist) {
-        setWatchlist(JSON.parse(storedWatchlist));
+      const initialContentData = new Map(ALL_CONTENT_ITEMS.map(item => [item.id, item]));
+      let loadedUserRatings: Record<number, number> = {};
+
+      const storedDb = localStorage.getItem(DB_KEY);
+      if (storedDb) {
+        const db: AppDatabase = JSON.parse(storedDb);
+        setIsAuthenticated(db.auth.isAuthenticated);
+        
+        if (db.auth.isAuthenticated && db.auth.currentProfileId) {
+          const profile = profiles.find(p => p.id === db.auth.currentProfileId);
+          if (profile) {
+            setCurrentProfile(profile);
+            const profileData = db.profiles[profile.id];
+            setWatchlist(profileData?.watchlist || []);
+            loadedUserRatings = profileData?.ratings || {};
+            setUserRatings(loadedUserRatings);
+          }
+        }
       }
-      const storedRatings = localStorage.getItem('aurastream_user_ratings');
-      if (storedRatings) {
-        setUserRatings(JSON.parse(storedRatings));
+
+      // Merge loaded ratings into the initial content data map
+      for (const [itemIdStr, rating] of Object.entries(loadedUserRatings)) {
+        const itemId = parseInt(itemIdStr, 10);
+        const currentItem = initialContentData.get(itemId);
+        if (currentItem) {
+          initialContentData.set(itemId, { ...currentItem, userRating: rating });
+        }
       }
+      setContentData(initialContentData);
+
       const storedWatchTime = localStorage.getItem('aurastream_watchtime');
       if (storedWatchTime) {
         setWatchTimeInSeconds(parseInt(storedWatchTime, 10));
       }
     } catch (error) {
       console.error("Failed to parse data from localStorage", error);
+      // Fallback to default content on error
+      setContentData(new Map(ALL_CONTENT_ITEMS.map(item => [item.id, item])));
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Save state to local "database" whenever it changes
+  useEffect(() => {
+    try {
+      const storedDb = localStorage.getItem(DB_KEY);
+      const db: AppDatabase = storedDb ? JSON.parse(storedDb) : { auth: { isAuthenticated: false, currentProfileId: null }, profiles: {} };
+      
+      db.auth = {
+        isAuthenticated,
+        currentProfileId: currentProfile?.id || null,
+      };
+
+      if (currentProfile) {
+        db.profiles[currentProfile.id] = {
+          watchlist,
+          ratings: userRatings,
+        };
+      }
+      
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+
+    } catch (error) {
+      console.error("Failed to save data to localStorage", error);
+    }
+  }, [isAuthenticated, currentProfile, watchlist, userRatings]);
+
 
   // Set up watch time timer and persistence
   useEffect(() => {
@@ -80,41 +137,6 @@ const App: React.FC = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [watchTimeInSeconds]); // Re-bind event listener to get latest watchTime
-
-  // Save watchlist to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      localStorage.setItem('aurastream_watchlist', JSON.stringify(watchlist));
-    } catch (error) {
-      console.error("Failed to save watchlist to localStorage", error);
-    }
-  }, [watchlist]);
-
-  // Save ratings to localStorage whenever they change
-  useEffect(() => {
-    try {
-      localStorage.setItem('aurastream_user_ratings', JSON.stringify(userRatings));
-    } catch (error) {
-      console.error("Failed to save user ratings to localStorage", error);
-    }
-  }, [userRatings]);
-
-  // Merge loaded user ratings into the main content data
-  useEffect(() => {
-    if (Object.keys(userRatings).length > 0) {
-      setContentData(prevData => {
-        const newData = new Map(prevData);
-        for (const [itemIdStr, rating] of Object.entries(userRatings)) {
-          const itemId = parseInt(itemIdStr, 10);
-          const currentItem = newData.get(itemId);
-          if (currentItem) {
-            newData.set(itemId, { ...currentItem, userRating: rating });
-          }
-        }
-        return newData;
-      });
-    }
-  }, [userRatings]);
 
 
   const allContent = useMemo(() => Array.from(contentData.values()), [contentData]);
@@ -212,18 +234,53 @@ const App: React.FC = () => {
   };
   
   const handleLogin = () => {
+    const defaultProfile = profiles[0];
     setIsAuthenticated(true);
-    setCurrentProfile(profiles[0]); // Set the default profile
+    setCurrentProfile(defaultProfile);
     setIsLoginModalOpen(false);
+
+    // Load data for the default profile
+    try {
+      const storedDb = localStorage.getItem(DB_KEY);
+      if (storedDb) {
+        const db: AppDatabase = JSON.parse(storedDb);
+        const profileData = db.profiles[defaultProfile.id];
+        setWatchlist(profileData?.watchlist || []);
+        setUserRatings(profileData?.ratings || {});
+      } else {
+        setWatchlist([]);
+        setUserRatings({});
+      }
+    } catch (error) {
+      console.error("Failed to load profile data on login", error);
+    }
   };
   
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentProfile(null);
+    setWatchlist([]);
+    setUserRatings({});
   };
   
   const handleProfileChange = (profile: UserProfile) => {
     setCurrentProfile(profile);
+    // Load data for the selected profile
+    try {
+      const storedDb = localStorage.getItem(DB_KEY);
+      if (storedDb) {
+        const db: AppDatabase = JSON.parse(storedDb);
+        const profileData = db.profiles[profile.id];
+        setWatchlist(profileData?.watchlist || []);
+        setUserRatings(profileData?.ratings || {});
+      } else {
+        // This case should be rare if a profile is being changed
+        setWatchlist([]);
+        setUserRatings({});
+      }
+    } catch (error) {
+      console.error("Failed to load profile data on change", error);
+    }
   };
 
   const featuredItem = useMemo(() => contentData.get(featuredContentId) || FEATURED_CONTENT, [featuredContentId, contentData]);
@@ -264,7 +321,7 @@ const App: React.FC = () => {
             />
           ) : (
             <>
-              {watchlistItems.length > 0 && (
+              {isAuthenticated && watchlistItems.length > 0 && (
                  <ContentCarousel 
                   title="My List"
                   items={watchlistItems}
