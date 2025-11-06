@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { ContentItem } from '../types';
 import MovieCard from './MovieCard';
 
@@ -11,63 +11,77 @@ interface ContentCarouselProps {
   toggleWatchlist: (itemId: number) => void;
 }
 
+const ChevronLeftIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+  </svg>
+);
+
+const ChevronRightIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+  </svg>
+);
+
+
 const ContentCarousel: React.FC<ContentCarouselProps> = ({ title, items, onPlay, onShowDetails, watchlist, toggleWatchlist }) => {
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        // Trigger animation only once when the element becomes visible
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(entry.target);
-        }
-      },
-      {
-        root: null,
-        rootMargin: '0px',
-        threshold: 0.1, // Animate when 10% of the carousel is visible
-      }
-    );
-
-    const currentRef = carouselRef.current;
-    if (currentRef) {
-      observer.observe(currentRef);
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
+      scrollRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
     }
-
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
-    };
-  }, []);
+  };
+  
+  if (!items || items.length === 0) {
+    return null;
+  }
 
   return (
-    <div 
-      ref={carouselRef}
-      className={`space-y-4 transition-all duration-700 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
-    >
-      <h3 className="text-xl md:text-2xl font-bold text-white container mx-auto px-4 sm:px-6 lg:px-8">
-        {title}
-      </h3>
-      <div className="relative">
-        <div className="overflow-x-auto overflow-y-hidden scrollbar-hide">
-          <div className="flex space-x-4 px-4 sm:px-6 lg:px-8">
-            {items.map((item) => (
-              <MovieCard 
-                key={item.id} 
-                item={item} 
-                onPlay={onPlay}
-                onShowDetails={onShowDetails}
-                watchlist={watchlist}
-                toggleWatchlist={toggleWatchlist}
-              />
-            ))}
-            <div className="flex-shrink-0 w-4 sm:w-6 lg:w-8"></div>
-          </div>
+    <div className="my-8 md:my-12">
+      <h3 className="text-xl md:text-2xl font-bold text-white mb-4 px-4 sm:px-6 lg:px-8">{title}</h3>
+      <div className="relative group">
+        <button
+          onClick={() => scroll('left')}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-12 h-full bg-black/30 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-black/60 disabled:opacity-0"
+          aria-label="Scroll left"
+        >
+          <ChevronLeftIcon />
+        </button>
+        <div 
+          ref={scrollRef}
+          className="flex space-x-4 overflow-x-scroll scrollbar-hide px-4 sm:px-6 lg:px-8"
+        >
+          {items.map(item => (
+            <MovieCard 
+              key={item.id} 
+              item={item} 
+              onPlay={onPlay} 
+              onShowDetails={onShowDetails}
+              watchlist={watchlist}
+              toggleWatchlist={toggleWatchlist}
+            />
+          ))}
         </div>
+        <button
+          onClick={() => scroll('right')}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-12 h-full bg-black/30 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-black/60"
+          aria-label="Scroll right"
+        >
+          <ChevronRightIcon />
+        </button>
       </div>
+       <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };
