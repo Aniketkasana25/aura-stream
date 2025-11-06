@@ -1,0 +1,5 @@
+{
+  "name": "NetPrime",
+  "description": "A modern, visually stunning streaming service interface, akin to Netflix or Amazon Prime, built with React and Tailwind CSS. It features a dynamic hero section, horizontally scrollable content carousels for different genres, and interactive movie cards with hover effects.",
+  "requestFramePermissions": []
+}
