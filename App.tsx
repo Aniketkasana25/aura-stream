@@ -18,9 +18,10 @@ const App: React.FC = () => {
   const [playingNatureVideoId, setPlayingNatureVideoId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
   const [watchlist, setWatchlist] = useState<number[]>([]);
+  const [userRatings, setUserRatings] = useState<Record<number, number>>({});
+  const [watchTimeInSeconds, setWatchTimeInSeconds] = useState(0);
   
   const [contentData, setContentData] = useState(() => {
-    // Use a map for efficient lookups and updates
     return new Map(ALL_CONTENT_ITEMS.map(item => [item.id, item]));
   });
 
@@ -28,30 +29,82 @@ const App: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1500); // Simulate a 1.5-second load time
+    }, 1500);
     return () => clearTimeout(timer);
   }, []);
 
-  // Load watchlist from localStorage on initial render
+  // Load watchlist, ratings, and watch time from localStorage on initial render
   useEffect(() => {
     try {
-      const storedWatchlist = localStorage.getItem('netprime_watchlist');
+      const storedWatchlist = localStorage.getItem('aurastream_watchlist');
       if (storedWatchlist) {
         setWatchlist(JSON.parse(storedWatchlist));
       }
+      const storedRatings = localStorage.getItem('aurastream_user_ratings');
+      if (storedRatings) {
+        setUserRatings(JSON.parse(storedRatings));
+      }
+      const storedWatchTime = localStorage.getItem('aurastream_watchtime');
+      if (storedWatchTime) {
+        setWatchTimeInSeconds(parseInt(storedWatchTime, 10));
+      }
     } catch (error) {
-      console.error("Failed to parse watchlist from localStorage", error);
+      console.error("Failed to parse data from localStorage", error);
     }
   }, []);
+
+  // Set up watch time timer and persistence
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWatchTimeInSeconds(prev => prev + 1);
+    }, 1000);
+
+    const handleBeforeUnload = () => {
+      localStorage.setItem('aurastream_watchtime', watchTimeInSeconds.toString());
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [watchTimeInSeconds]); // Re-bind event listener to get latest watchTime
 
   // Save watchlist to localStorage whenever it changes
   useEffect(() => {
     try {
-      localStorage.setItem('netprime_watchlist', JSON.stringify(watchlist));
+      localStorage.setItem('aurastream_watchlist', JSON.stringify(watchlist));
     } catch (error) {
       console.error("Failed to save watchlist to localStorage", error);
     }
   }, [watchlist]);
+
+  // Save ratings to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('aurastream_user_ratings', JSON.stringify(userRatings));
+    } catch (error) {
+      console.error("Failed to save user ratings to localStorage", error);
+    }
+  }, [userRatings]);
+
+  // Merge loaded user ratings into the main content data
+  useEffect(() => {
+    if (Object.keys(userRatings).length > 0) {
+      setContentData(prevData => {
+        const newData = new Map(prevData);
+        for (const [itemIdStr, rating] of Object.entries(userRatings)) {
+          const itemId = parseInt(itemIdStr, 10);
+          const currentItem = newData.get(itemId);
+          if (currentItem) {
+            newData.set(itemId, { ...currentItem, userRating: rating });
+          }
+        }
+        return newData;
+      });
+    }
+  }, [userRatings]);
+
 
   const allContent = useMemo(() => Array.from(contentData.values()), [contentData]);
 
@@ -87,6 +140,10 @@ const App: React.FC = () => {
   }, [watchlist, contentData]);
 
   const handleRateMovie = useCallback((itemId: number, newRating: number) => {
+    // Persist the rating to its own state and localStorage
+    setUserRatings(prev => ({ ...prev, [itemId]: newRating }));
+
+    // Update the main content data for immediate UI reactivity
     setContentData(prevData => {
       const currentItem = prevData.get(itemId);
       if (!currentItem) return prevData;
@@ -97,15 +154,13 @@ const App: React.FC = () => {
       let newRatingCount = currentItem.ratingCount;
 
       if (currentItem.userRating) {
-        // User is changing their rating
         newTotalRating = newTotalRating - currentItem.userRating + newRating;
       } else {
-        // User is rating for the first time
         newTotalRating += newRating;
         newRatingCount += 1;
       }
       
-      const newCommunityRating = newTotalRating / newRatingCount;
+      const newCommunityRating = newRatingCount > 0 ? newTotalRating / newRatingCount : 0;
 
       const updatedItem: ContentItem = {
         ...currentItem,
@@ -115,7 +170,7 @@ const App: React.FC = () => {
       };
       
       newData.set(itemId, updatedItem);
-      // Also update the selected item if it's the one being rated
+      
       if (selectedItem?.id === itemId) {
         setSelectedItem(updatedItem);
       }
@@ -128,7 +183,6 @@ const App: React.FC = () => {
   const handlePlay = (videoId?: string) => {
     if (videoId) {
       setIsVideoLoading(true);
-      // Simulate loading time for the video player to initialize
       setTimeout(() => {
         if (videoId.startsWith('nature:')) {
           setPlayingNatureVideoId(videoId.replace('nature:', ''));
@@ -204,7 +258,7 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
-      <Footer />
+      <Footer watchTimeInSeconds={watchTimeInSeconds} />
       {playingVideoId && (
         <VideoPlayerModal videoId={playingVideoId} onClose={handleClosePlayer} />
       )}

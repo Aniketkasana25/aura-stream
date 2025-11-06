@@ -1,6 +1,19 @@
 import React from 'react';
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  watchTimeInSeconds: number;
+}
+
+const Footer: React.FC<FooterProps> = ({ watchTimeInSeconds }) => {
+  const formatTime = (totalSeconds: number) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return [hours, minutes, seconds]
+      .map(v => v.toString().padStart(2, '0'))
+      .join(':');
+  };
+
   return (
     <footer className="py-12 mt-16 text-gray-400">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
@@ -29,7 +42,10 @@ const Footer: React.FC = () => {
             <a href="#" className="block hover:text-white">Contact Us</a>
           </div>
         </div>
-        <p className="mt-10 text-xs text-center">&copy; 2024 Aura Stream, Inc.</p>
+        <div className="mt-10 pt-8 border-t border-gray-800 text-center">
+            <p className="text-sm">Total Watch Time: <span className="font-semibold text-white">{formatTime(watchTimeInSeconds)}</span></p>
+            <p className="mt-4 text-xs">&copy; 2024 Aura Stream, Inc.</p>
+        </div>
       </div>
     </footer>
   );

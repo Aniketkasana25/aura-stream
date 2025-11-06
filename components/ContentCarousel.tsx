@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ContentItem } from '../types';
 import MovieCard from './MovieCard';
 
@@ -12,8 +12,42 @@ interface ContentCarouselProps {
 }
 
 const ContentCarousel: React.FC<ContentCarouselProps> = ({ title, items, onPlay, onShowDetails, watchlist, toggleWatchlist }) => {
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Trigger animation only once when the element becomes visible
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1, // Animate when 10% of the carousel is visible
+      }
+    );
+
+    const currentRef = carouselRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, []);
+
   return (
-    <div className="space-y-4">
+    <div 
+      ref={carouselRef}
+      className={`space-y-4 transition-all duration-700 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+    >
       <h3 className="text-xl md:text-2xl font-bold text-white container mx-auto px-4 sm:px-6 lg:px-8">
         {title}
       </h3>
