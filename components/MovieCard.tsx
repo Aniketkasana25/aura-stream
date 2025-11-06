@@ -35,16 +35,42 @@ interface MovieCardProps {
 }
 
 const MovieCard: React.FC<MovieCardProps> = ({ item, onPlay, onShowDetails, watchlist, toggleWatchlist }) => {
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
   const isInWatchlist = watchlist.includes(item.id);
 
   return (
     <div
-      className="group relative flex-shrink-0 w-40 md:w-48 lg:w-56 rounded-md overflow-hidden shadow-lg transform transition-all duration-300 ease-in-out hover:scale-105 hover:z-10 cursor-pointer"
+      className="group relative flex-shrink-0 w-40 md:w-48 lg:w-56 rounded-md overflow-hidden shadow-lg transform transition-all duration-300 ease-in-out hover:scale-105 hover:z-10 cursor-pointer bg-gray-800"
       onClick={() => onShowDetails(item)}
     >
-      <img src={item.posterUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+      {!isImageLoaded && (
+        <>
+          <div className="absolute inset-0 animate-shimmer"></div>
+          <style>{`
+            @keyframes shimmer {
+              0% { background-position: -1000px 0; }
+              100% { background-position: 1000px 0; }
+            }
+            .animate-shimmer {
+              animation: shimmer 2s infinite linear;
+              background: linear-gradient(to right, #1f2937 8%, #374151 18%, #1f2937 33%);
+              background-size: 2000px 100%;
+            }
+          `}</style>
+        </>
+      )}
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-3">
+      <img 
+        src={item.posterUrl} 
+        alt={item.title} 
+        className={`w-full h-full object-cover transition-opacity duration-500 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        loading="lazy" 
+        onLoad={() => setIsImageLoaded(true)}
+      />
+
+      <div 
+        className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-300 flex flex-col justify-between p-3 ${isImageLoaded ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}
+      >
         <div className="flex-grow flex items-center justify-center">
             <button
               onClick={(e) => {

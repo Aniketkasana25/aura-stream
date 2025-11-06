@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { UserProfile } from '../profiles';
 
 interface HeaderProps {
   onSearchChange: (query: string) => void;
+  isAuthenticated: boolean;
+  onLoginClick: () => void;
+  onLogoutClick: () => void;
+  profiles: UserProfile[];
+  currentProfile: UserProfile | null;
+  onProfileChange: (profile: UserProfile) => void;
 }
 
 const SearchIcon = () => (
@@ -16,12 +23,36 @@ const BellIcon = () => (
   </svg>
 );
 
-const Header: React.FC<HeaderProps> = ({ onSearchChange }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  onSearchChange, 
+  isAuthenticated, 
+  onLoginClick, 
+  onLogoutClick,
+  profiles,
+  currentProfile,
+  onProfileChange
+}) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -48,6 +79,11 @@ const Header: React.FC<HeaderProps> = ({ onSearchChange }) => {
     if (isSearchOpen) {
       setSearchValue('');
     }
+  };
+
+  const handleProfileSelect = (profile: UserProfile) => {
+    onProfileChange(profile);
+    setIsProfileDropdownOpen(false);
   };
 
 
@@ -84,12 +120,58 @@ const Header: React.FC<HeaderProps> = ({ onSearchChange }) => {
                 <SearchIcon />
               </button>
             </div>
-            <button className="text-gray-300 hover:text-white transition-colors" aria-label="Notifications">
-              <BellIcon />
-            </button>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-md overflow-hidden">
-              <img src="https://picsum.photos/seed/avatar/80/80" alt="User Avatar" className="w-full h-full object-cover" />
-            </div>
+            {isAuthenticated && currentProfile ? (
+              <>
+                <button className="text-gray-300 hover:text-white transition-colors" aria-label="Notifications">
+                  <BellIcon />
+                </button>
+                <div className="relative" ref={profileDropdownRef}>
+                  <button 
+                    className="w-8 h-8 md:w-10 md:h-10 rounded-md overflow-hidden cursor-pointer block"
+                    onClick={() => setIsProfileDropdownOpen(prev => !prev)}
+                    aria-label="Open profile menu"
+                  >
+                      <img src={currentProfile.avatarUrl} alt="User Avatar" className="w-full h-full object-cover" />
+                  </button>
+                  {isProfileDropdownOpen && (
+                    <div className="absolute top-full right-0 mt-2 w-48 bg-brand-dark rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 z-20">
+                      {profiles.map(profile => (
+                        <a
+                          key={profile.id}
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleProfileSelect(profile);
+                          }}
+                          className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-800"
+                        >
+                          <img src={profile.avatarUrl} alt={profile.name} className="w-8 h-8 rounded-md mr-3" />
+                          <span>{profile.name}</span>
+                        </a>
+                      ))}
+                      <div className="border-t border-gray-700 my-1"></div>
+                      <a
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onLogoutClick();
+                        }}
+                        className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 text-center"
+                      >
+                        Sign Out
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <button 
+                onClick={onLoginClick}
+                className="bg-brand-purple text-white font-semibold px-4 py-2 rounded-md text-sm hover:bg-purple-700 transition-colors"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       </div>

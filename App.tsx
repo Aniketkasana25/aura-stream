@@ -7,8 +7,10 @@ import VideoPlayerModal from './components/VideoPlayerModal';
 import NatureVideoModal from './components/NatureVideoModal';
 import MovieDetailsModal from './components/MovieDetailsModal';
 import LoadingSpinner from './components/LoadingSpinner';
+import LoginModal from './components/LoginModal';
 import { FEATURED_CONTENT, CONTENT_CATEGORIES, ALL_CONTENT_ITEMS } from './constants';
 import { ContentItem } from './types';
+import { UserProfile, USER_PROFILES } from './profiles';
 
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -21,15 +23,24 @@ const App: React.FC = () => {
   const [userRatings, setUserRatings] = useState<Record<number, number>>({});
   const [watchTimeInSeconds, setWatchTimeInSeconds] = useState(0);
   
+  // Auth and Profile State
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [profiles] = useState<UserProfile[]>(USER_PROFILES);
+  const [currentProfile, setCurrentProfile] = useState<UserProfile | null>(null);
+  
   const [contentData, setContentData] = useState(() => {
     return new Map(ALL_CONTENT_ITEMS.map(item => [item.id, item]));
   });
+  
+  const [featuredContentId, setFeaturedContentId] = useState(FEATURED_CONTENT.id);
+  const [contentCategories, setContentCategories] = useState(CONTENT_CATEGORIES);
 
   // Simulate initial loading
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 1500);
+    }, 1000); // A bit of a delay for a smoother perceived loading experience
     return () => clearTimeout(timer);
   }, []);
 
@@ -200,19 +211,44 @@ const App: React.FC = () => {
     setIsVideoLoading(false);
   };
   
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    setCurrentProfile(profiles[0]); // Set the default profile
+    setIsLoginModalOpen(false);
+  };
+  
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentProfile(null);
+  };
+  
+  const handleProfileChange = (profile: UserProfile) => {
+    setCurrentProfile(profile);
+  };
+
+  const featuredItem = useMemo(() => contentData.get(featuredContentId) || FEATURED_CONTENT, [featuredContentId, contentData]);
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
   return (
     <div className="bg-brand-dark min-h-screen text-gray-100 font-sans">
-      {(isLoading || isVideoLoading) && <LoadingSpinner />}
-      <Header onSearchChange={setSearchQuery} />
+      {(isVideoLoading) && <LoadingSpinner />}
+      <Header 
+        onSearchChange={setSearchQuery} 
+        isAuthenticated={isAuthenticated}
+        onLoginClick={() => setIsLoginModalOpen(true)}
+        onLogoutClick={handleLogout}
+        profiles={profiles}
+        currentProfile={currentProfile}
+        onProfileChange={handleProfileChange}
+      />
       <main>
         {!searchQuery && <Hero 
-          item={contentData.get(FEATURED_CONTENT.id) || FEATURED_CONTENT} 
+          item={featuredItem}
           onPlay={handlePlay}
-          onShowDetails={() => handleShowDetails(contentData.get(FEATURED_CONTENT.id) || FEATURED_CONTENT)}
+          onShowDetails={() => handleShowDetails(featuredItem)}
           watchlist={watchlist}
           toggleWatchlist={handleToggleWatchlist}
         />}
@@ -238,7 +274,7 @@ const App: React.FC = () => {
                   toggleWatchlist={handleToggleWatchlist}
                 />
               )}
-              {CONTENT_CATEGORIES.map((category) => (
+              {contentCategories.map((category) => (
                 <ContentCarousel 
                   key={category.id} 
                   title={category.title} 
@@ -272,6 +308,12 @@ const App: React.FC = () => {
           onRate={handleRateMovie}
           watchlist={watchlist}
           toggleWatchlist={handleToggleWatchlist}
+        />
+      )}
+      {isLoginModalOpen && (
+        <LoginModal 
+          onClose={() => setIsLoginModalOpen(false)} 
+          onLogin={handleLogin} 
         />
       )}
     </div>
