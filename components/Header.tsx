@@ -57,7 +57,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchChange }) => {
         <div className="flex items-center justify-between h-16 md:h-20">
           <div className="flex items-center space-x-8">
             <h1 className="text-2xl md:text-3xl font-bold text-brand-purple tracking-wider">
-              NETPRIME
+              AURA STREAM
             </h1>
             <nav className="hidden md:flex items-center space-x-6">
               <a href="#" className="text-gray-300 hover:text-white transition-colors text-sm font-medium">Home</a>

@@ -21,7 +21,7 @@ const Footer: React.FC = () => {
             <a href="#" className="block hover:text-white">Account</a>
             <a href="#" className="block hover:text-white">Ways to Watch</a>
             <a href="#" className="block hover:text-white">Corporate Information</a>
-            <a href="#" className="block hover:text-white">Only on NetPrime</a>
+            <a href="#" className="block hover:text-white">Only on Aura Stream</a>
           </div>
           <div className="space-y-3">
             <a href="#" className="block hover:text-white">Media Center</a>
@@ -29,7 +29,7 @@ const Footer: React.FC = () => {
             <a href="#" className="block hover:text-white">Contact Us</a>
           </div>
         </div>
-        <p className="mt-10 text-xs text-center">&copy; 2024 NetPrime, Inc.</p>
+        <p className="mt-10 text-xs text-center">&copy; 2024 Aura Stream, Inc.</p>
       </div>
     </footer>
   );

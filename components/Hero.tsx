@@ -38,8 +38,8 @@ const Hero: React.FC<HeroProps> = ({ item, onPlay, onShowDetails, watchlist, tog
 
   return (
     <div className="relative h-[50vh] md:h-[80vh] w-full">
-      <div className="absolute inset-0">
-        <img src={item.backdropUrl} alt={item.title} className="w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-gray-900">
+        <img src={item.backdropUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
         <div className="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/60 to-transparent"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-brand-dark/50 to-transparent"></div>
       </div>

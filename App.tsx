@@ -6,10 +6,13 @@ import Footer from './components/Footer';
 import VideoPlayerModal from './components/VideoPlayerModal';
 import NatureVideoModal from './components/NatureVideoModal';
 import MovieDetailsModal from './components/MovieDetailsModal';
+import LoadingSpinner from './components/LoadingSpinner';
 import { FEATURED_CONTENT, CONTENT_CATEGORIES, ALL_CONTENT_ITEMS } from './constants';
 import { ContentItem } from './types';
 
 const App: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [playingNatureVideoId, setPlayingNatureVideoId] = useState<string | null>(null);
@@ -20,6 +23,14 @@ const App: React.FC = () => {
     // Use a map for efficient lookups and updates
     return new Map(ALL_CONTENT_ITEMS.map(item => [item.id, item]));
   });
+
+  // Simulate initial loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500); // Simulate a 1.5-second load time
+    return () => clearTimeout(timer);
+  }, []);
 
   // Load watchlist from localStorage on initial render
   useEffect(() => {
@@ -116,21 +127,32 @@ const App: React.FC = () => {
 
   const handlePlay = (videoId?: string) => {
     if (videoId) {
-      if (videoId.startsWith('nature:')) {
-        setPlayingNatureVideoId(videoId.replace('nature:', ''));
-      } else {
-        setPlayingVideoId(videoId);
-      }
+      setIsVideoLoading(true);
+      // Simulate loading time for the video player to initialize
+      setTimeout(() => {
+        if (videoId.startsWith('nature:')) {
+          setPlayingNatureVideoId(videoId.replace('nature:', ''));
+        } else {
+          setPlayingVideoId(videoId);
+        }
+        setIsVideoLoading(false);
+      }, 1200);
     }
   };
 
   const handleClosePlayer = () => {
     setPlayingVideoId(null);
     setPlayingNatureVideoId(null);
+    setIsVideoLoading(false);
   };
   
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <div className="bg-brand-dark min-h-screen text-gray-100 font-sans">
+      {(isLoading || isVideoLoading) && <LoadingSpinner />}
       <Header onSearchChange={setSearchQuery} />
       <main>
         {!searchQuery && <Hero 

@@ -42,8 +42,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ item, onPlay, onShowDetails, watc
     <div 
       className="group relative flex-shrink-0 w-40 md:w-52 lg:w-60 rounded-lg overflow-hidden transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-2xl hover:shadow-brand-purple/20 hover:z-10"
     >
-      <div className="aspect-[2/3]">
-        <img src={item.posterUrl} alt={item.title} className="w-full h-full object-cover" />
+      <div className="aspect-[2/3] bg-gray-900">
+        <img src={item.posterUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
       </div>
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end">
         <div className="p-4 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
